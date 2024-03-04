@@ -14,15 +14,10 @@ const publicDirectoryPath = path.join(__dirname, "../public");
 app.use(express.static(publicDirectoryPath));
 let count = 0;
 io.on("connection", (socket) => {
-  console.log("New WebSocket connection");
-  // if i used io.emit here every time a new client joined all clients would get the count .
-  socket.emit("count", count);
-  socket.on("increment", () => {
-    count++;
-    // When we use socket.emit we are emitting the event to a particular connection.
-    // socket.emit('count', count);
-    // I want to emit it to every single connection.
-    io.emit("count", count);
+  socket.emit("message", "Welcome!");
+  socket.on("sendMessage", (message) => {
+    console.log(message);
+    io.emit("message", message);
   });
 });
 server.listen(port, () => {
