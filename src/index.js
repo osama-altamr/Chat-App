@@ -7,7 +7,12 @@ const {
   generateMessage,
   generateLocationMessage,
 } = require("./utils/messages");
-const { addUser, removeUser, getUser } = require("./utils/users");
+const {
+  addUser,
+  removeUser,
+  getUser,
+  getUsersInRoom,
+} = require("./utils/users");
 
 const app = express();
 const server = http.createServer(app);
@@ -28,12 +33,19 @@ io.on("connection", (socket) => {
 
     socket.join(user.room);
 
-    socket.emit("message", generateMessage("Welcome!"));
+    socket.emit("message", generateMessage("Admin", "Welcome!"));
 
     socket.broadcast
       .to(user.room)
-      .emit("message", generateMessage(`${user.username} has joined!`));
+      .emit(
+        "message",
+        generateMessage("Admin", `${user.username} has joined!`)
+      );
 
+    io.to(user.room).emit("roomData", {
+      room: user.room,
+      users: getUsersInRoom(user.room),
+    });
     callback();
   });
 
@@ -42,19 +54,18 @@ io.on("connection", (socket) => {
     if (filter.isProfane(message)) {
       return callback("Profanity is not allowed!");
     }
-    const user=getUser(socket.id);
-    console.log('User',user)
-    io.to(user.room).emit("message", generateMessage(message));
-
-    // callback();
+    const user = getUser(socket.id);
+    console.log("User", user);
+    io.to(user.room).emit("message", generateMessage(user.username, message));
     callback();
   });
 
   socket.on("location", (coords, callback) => {
-    console.log(coords);
-    io.emit(
+    const user = getUser(socket.id);
+    io.to(user.room).emit(
       "locationMessage",
       generateLocationMessage(
+        user.username,
         `https://www.google.com/maps?q=${coords.lat},${coords.long}`
       )
     );
@@ -62,9 +73,16 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    const user= removeUser(socket.id);
+    const user = removeUser(socket.id);
     if (user) {
-      io.to(user.room).emit("message", generateMessage(`${user.username} has left!`));
+      io.to(user.room).emit(
+        "message",
+        generateMessage("Admin", `${user.username} has left!`)
+      );
+      io.to(user.room).emit("roomData",{
+        room:user.room,
+        users:getUsersInRoom(user.room)
+      })
     }
   });
 });
